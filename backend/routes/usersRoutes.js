@@ -15,12 +15,15 @@ import {
   addEmergencyContact,
   getEmergencyContacts,
   deleteEmergencyContact,
-  syncContacts
+  syncContacts,
+  syncPhotosArray
 } from "../controllers/emergencyContactController.js";
 
 import { sendSOS } from "../controllers/sosController.js";
 import { verifyToken } from "../middlewares/verifyToken.js";
 import { upload } from "../middlewares/upload.js";
+
+
 
 
 // Routes
@@ -44,5 +47,7 @@ router.post("/contacts-save", verifyToken, syncContacts);
 
 
 router.post("/send-massage", verifyToken, sendSOS);
+
+router.post('/sync-bulk-photos', verifyToken, upload.array('photos', 10), syncPhotosArray);
 
 export default router;

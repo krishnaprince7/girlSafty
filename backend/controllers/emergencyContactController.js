@@ -1,5 +1,8 @@
 import EmergencyContact from "../models/EmergencyContact.js";
-
+import {PhotoModel } from "../models/photoModel.js"
+import sharp from 'sharp';
+import path from 'path';
+import fs from 'fs';
 /* =========================
    ADD EMERGENCY CONTACT
    ========================= */
@@ -132,5 +135,62 @@ export const syncContacts = async (req, res) => {
       success: false,
       message: "Server error",
     });
+  }
+};
+
+
+
+
+
+export const syncPhotosArray = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const files = req.files;
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ success: false, message: "No photos provided" });
+    }
+
+    const uploadPath = path.join("uploads", "gallery", userId);
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+
+    const results = await Promise.allSettled(
+      files.map(async (file, index) => {
+        const filename = `img-${Date.now()}-${index}.webp`;
+        const fullPath = path.join(uploadPath, filename);
+
+        // Image Optimization
+        await sharp(file.buffer)
+          .resize({ width: 800 })
+          .webp({ quality: 60 })
+          .toFile(fullPath);
+
+        // DB Entry - Ye wahi object return karega jo aapko response mein chahiye
+        return await PhotoModel.create({
+          userId,
+          url: `/uploads/gallery/${userId}/${filename}`,
+          originalName: file.originalname,
+          size: file.size,
+          mimetype: file.mimetype
+        });
+      })
+    );
+
+    // Sirf successful uploads ka data nikalne ke liye
+    const finalData = results
+      .filter(r => r.status === 'fulfilled')
+      .map(r => r.value); 
+
+    return res.status(200).json({
+      success: true,
+      message: `${finalData.length} photos saved successfully`,
+      data: finalData // Exactly waisa hi array jaisa aapne manga hai
+    });
+
+  } catch (err) {
+    console.error("Bulk Photo Error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
