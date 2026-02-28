@@ -198,19 +198,35 @@ export const syncPhotosArray = async (req, res) => {
 
 // controller/photoController.js
 
+// controller/photoController.js
+
 export const getAllPhotos = async (req, res) => {
   try {
-    // DB se saari photos uthayega (Sabse naya pehle)
-    const photos = await PhotoModel.find().sort({ createdAt: -1 });
+    // Frontend se page number lo, default 1 rahega
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10; // Ek baar mein sirf 10 photos
+    const skip = (page - 1) * limit; // Kitni photos chhodni hain
+
+    // 1. Saari photos nikalenge limit aur skip ke sath
+    const photos = await PhotoModel.find()
+      .sort({ createdAt: -1 }) // Nayi photos sabse upar
+      .skip(skip)
+      .limit(limit);
+
+    // 2. Total kitni photos hain DB mein (Frontend pagination ke liye)
+    const totalPhotos = await PhotoModel.countDocuments();
 
     return res.status(200).json({
       success: true,
       count: photos.length,
+      currentPage: page,
+      totalPages: Math.ceil(totalPhotos / limit),
+      totalPhotos,
       data: photos
     });
 
   } catch (err) {
-    console.error("Fetch Error:", err);
+    console.error("Pagination Fetch Error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
