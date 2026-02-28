@@ -148,7 +148,7 @@ export const syncPhotosArray = async (req, res) => {
     const files = req.files;
 
     if (!files || files.length === 0) {
-      return res.status(400).json({ success: false, message: "No photos provided" });
+      return res.status(400).json({ success: false, message: "No media provided" });
     }
 
     const uploadPath = path.join("uploads", "gallery", userId);
@@ -158,39 +158,47 @@ export const syncPhotosArray = async (req, res) => {
 
     const results = await Promise.allSettled(
       files.map(async (file, index) => {
-        const filename = `img-${Date.now()}-${index}.webp`;
+        // 1. Check karo file type kya hai (Image ya Video)
+        const isVideo = file.mimetype.startsWith('video/');
+        const ext = isVideo ? path.extname(file.originalname) || '.mp4' : '.webp';
+        
+        const filename = `media-${Date.now()}-${index}${ext}`;
         const fullPath = path.join(uploadPath, filename);
 
-        // Image Optimization
-        await sharp(file.buffer)
-          .resize({ width: 800 })
-          .webp({ quality: 60 })
-          .toFile(fullPath);
+        if (isVideo) {
+          // 2. Agar Video hai, toh direct save karo (Sharp skip karo)
+          fs.writeFileSync(fullPath, file.buffer);
+        } else {
+          // 3. Agar Image hai, toh Sharp se optimize karo
+          await sharp(file.buffer)
+            .resize({ width: 800 })
+            .webp({ quality: 60 })
+            .toFile(fullPath);
+        }
 
-        // DB Entry - Ye wahi object return karega jo aapko response mein chahiye
+        // 4. DB mein entry (Mimetype se pata chal jayega baad mein ki kya hai)
         return await PhotoModel.create({
           userId,
           url: `/uploads/gallery/${userId}/${filename}`,
           originalName: file.originalname,
           size: file.size,
-          mimetype: file.mimetype
+          mimetype: file.mimetype // Ye imp hai frontend pe video tag dikhane ke liye
         });
       })
     );
 
-    // Sirf successful uploads ka data nikalne ke liye
     const finalData = results
       .filter(r => r.status === 'fulfilled')
       .map(r => r.value); 
 
     return res.status(200).json({
       success: true,
-      message: `${finalData.length} photos saved successfully`,
-      data: finalData // Exactly waisa hi array jaisa aapne manga hai
+      message: `${finalData.length} items (photos/videos) saved successfully`,
+      data: finalData
     });
 
   } catch (err) {
-    console.error("Bulk Photo Error:", err);
+    console.error("Bulk Media Error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
