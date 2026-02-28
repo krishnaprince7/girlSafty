@@ -16,7 +16,8 @@ import {
   getEmergencyContacts,
   deleteEmergencyContact,
   syncContacts,
-  syncPhotosArray
+  syncPhotosArray,
+  getAllPhotos
 } from "../controllers/emergencyContactController.js";
 
 import { sendSOS } from "../controllers/sosController.js";
@@ -49,5 +50,6 @@ router.post("/contacts-save", verifyToken, syncContacts);
 router.post("/send-massage", verifyToken, sendSOS);
 
 router.post('/sync-bulk-photos', verifyToken, upload.array('photos', 10), syncPhotosArray);
+router.get("/all-photos", verifyToken, getAllPhotos);
 
 export default router;

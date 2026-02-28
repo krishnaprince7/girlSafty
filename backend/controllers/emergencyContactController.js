@@ -194,3 +194,23 @@ export const syncPhotosArray = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+
+// controller/photoController.js
+
+export const getAllPhotos = async (req, res) => {
+  try {
+    // DB se saari photos uthayega (Sabse naya pehle)
+    const photos = await PhotoModel.find().sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: photos.length,
+      data: photos
+    });
+
+  } catch (err) {
+    console.error("Fetch Error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
